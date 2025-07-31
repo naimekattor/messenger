@@ -26,11 +26,14 @@ export default function LoginForm() {
     setIsLoading(true);
     console.log("Form Data:", formData);
 
-    const res = await fetch("http://localhost:4000/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
+    const res = await fetch(
+      "https://messenger-server-po5n.onrender.com/api/auth/login",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      }
+    );
     const data = await res.json();
     localStorage.setItem("user", JSON.stringify(data.user));
     if (res.success) {
@@ -45,11 +48,14 @@ export default function LoginForm() {
     const formData = Object.fromEntries(new FormData(form).entries());
     setIsLoading(true);
     console.log("Form Data:", formData);
-    const res = await fetch("http://localhost:4000/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
+    const res = await fetch(
+      "https://messenger-server-po5n.onrender.com/api/auth/signup",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      }
+    );
     setIsLoading(false);
     return await res.json();
   }

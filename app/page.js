@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import { CiLocationArrow1 } from "react-icons/ci";
 
-const socket = io("http://localhost:4000"); // Singleton socket
+const socket = io("https://messenger-server-po5n.onrender.com/"); // Singleton socket
 
 const Chat = () => {
   const [input, setInput] = useState("");
@@ -15,7 +15,9 @@ const Chat = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       const user = JSON.parse(localStorage.getItem("user"));
-      const res = await fetch(`http://localhost:4000/users/${user._id}`);
+      const res = await fetch(
+        `https://messenger-server-po5n.onrender.com/users/${user._id}`
+      );
       const users = await res.json();
       setUserList(users); // all other users
     };
