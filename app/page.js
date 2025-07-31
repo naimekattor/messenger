@@ -2,8 +2,9 @@
 import React, { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import { CiLocationArrow1 } from "react-icons/ci";
+import { HiMenuAlt2, HiX } from "react-icons/hi";
 
-const socket = io("https://messenger-server-po5n.onrender.com/"); // Singleton socket
+const socket = io("https://messenger-server-po5n.onrender.com");
 
 const Chat = () => {
   const [input, setInput] = useState("");
@@ -11,6 +12,7 @@ const Chat = () => {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [userList, setUserList] = useState([]);
   const [otherUserId, setOtherUserId] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -19,14 +21,12 @@ const Chat = () => {
         `https://messenger-server-po5n.onrender.com/users/${user._id}`
       );
       const users = await res.json();
-      setUserList(users); // all other users
+      setUserList(users);
     };
 
     fetchUsers();
   }, []);
-  console.log("userList", userList);
 
-  // 1. Get userId from localStorage on client side only
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (userData) {
@@ -36,6 +36,7 @@ const Chat = () => {
   }, []);
 
   useEffect(() => {
+    if (!currentUserId) return;
     socket.emit("register", currentUserId);
 
     const handleReceiveMessage = ({ senderId, message }) => {
@@ -43,14 +44,11 @@ const Chat = () => {
     };
 
     socket.on("receive-message", handleReceiveMessage);
-
-    return () => {
-      socket.off("receive-message", handleReceiveMessage);
-    };
+    return () => socket.off("receive-message", handleReceiveMessage);
   }, [currentUserId]);
 
   const handleMessage = () => {
-    if (input.trim()) {
+    if (input.trim() && otherUserId) {
       socket.emit("send-message", {
         senderId: currentUserId,
         receiverId: otherUserId,
@@ -64,67 +62,87 @@ const Chat = () => {
     }
   };
 
-  // 4. Prevent UI render until user ID is loaded
   if (!currentUserId) return <p className="p-4">Loading chat...</p>;
 
   return (
-    <div className="flex gap-2  h-screen">
-      <div className="flex justify-between items-center p-4 bg-gray-200 border-r-2 border-gray-300">
-        <h1 className="text-xl font-bold">Chat</h1>
-        <select
-          className="border rounded p-2"
-          onChange={(e) => setOtherUserId(e.target.value)}
-        >
-          {userList.map((user) => (
-            <option key={user._id} value={user._id}>
-              {user.firstName}
-            </option>
-          ))}
-        </select>
+    <div className="flex h-screen overflow-hidden relative">
+      {/* Mobile menu button */}
+      <button
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="absolute top-4 left-4 z-20 md:hidden bg-white p-2 rounded shadow"
+      >
+        {isSidebarOpen ? <HiX size={24} /> : <HiMenuAlt2 size={24} />}
+      </button>
+
+      {/* Sidebar */}
+      <div
+        className={`fixed md:static top-0 left-0 h-full w-[260px] bg-gray-100 border-r z-10 transform transition-transform duration-300 ease-in-out ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0`}
+      >
+        <div className="p-4 h-full overflow-y-auto">
+          <h2 className="text-xl font-semibold mb-4">Users</h2>
+          <div className="flex flex-col gap-3">
+            {userList.map((user) => (
+              <div
+                key={user._id}
+                onClick={() => {
+                  setOtherUserId(user._id);
+                  setIsSidebarOpen(false); // close sidebar on mobile
+                }}
+                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-200 ${
+                  otherUserId === user._id ? "bg-gray-300" : ""
+                }`}
+              >
+                <img
+                  src={
+                    user.image_url ||
+                    "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png"
+                  }
+                  alt="User"
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+                <span className="font-medium">{user.firstName}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-      <div className="flex-1 bg-white border-r-2 border-gray-300 h-screen overflow-y-auto justify-end">
-        <div className=" h-[calc(100vh-100px)] flex flex-col gap-2 p-6">
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col ml-0 md:ml-[260px] w-full">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.map((msg, i) => (
             <div
               key={i}
-              style={{
-                display: "flex",
-                justifyContent:
-                  msg.senderId === currentUserId ? "flex-end" : "flex-start",
-                marginBottom: "8px",
-              }}
+              className={`flex ${
+                msg.senderId === currentUserId ? "justify-end" : "justify-start"
+              }`}
             >
               <div
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: "12px",
-                  maxWidth: "300px",
-                  backgroundColor:
-                    msg.senderId === currentUserId ? "#3B82F6" : "#E5E7EB",
-                  color: msg.senderId === currentUserId ? "#FFFFFF" : "#111827",
-                  fontSize: "14px",
-                }}
+                className={`max-w-[70%] rounded-lg px-4 py-2 text-sm ${
+                  msg.senderId === currentUserId
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200 text-gray-800"
+                }`}
               >
-                <strong>
-                  {msg.senderId === currentUserId ? "Me" : msg.senderId}:
-                </strong>{" "}
                 {msg.message}
               </div>
             </div>
           ))}
         </div>
-        <div className="flex gap-2 mt-4 py-6 justify-center">
-          <div className="border-1 border-gray-300/60 rounded">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="w-full py-2 px-4"
-            />
-          </div>
 
+        <div className="p-4 flex items-center gap-2 border-t">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1 border rounded-full px-4 py-2 outline-none"
+          />
           <button
             onClick={handleMessage}
-            className="bg-black text-white rounded-md px-4 "
+            className="bg-black text-white p-2 rounded-full hover:bg-gray-800"
           >
             <CiLocationArrow1 size={20} />
           </button>
@@ -133,4 +151,5 @@ const Chat = () => {
     </div>
   );
 };
+
 export default Chat;
