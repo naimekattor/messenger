@@ -13,6 +13,7 @@ const Chat = () => {
   const [userList, setUserList] = useState([]);
   const [otherUserId, setOtherUserId] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [typingUserId, setTypingUserId] = useState(null);
 
   const getUserById = (id) => userList.find((user) => user._id === id);
 
@@ -45,7 +46,13 @@ const Chat = () => {
       setMessages((prev) => [...prev, { senderId, message }]);
     };
 
+    const handleTyping = ({ senderId }) => {
+      setTypingUserId(senderId);
+      setTimeout(() => setTypingUserId(null), 2000);
+    };
+
     socket.on("receive-message", handleReceiveMessage);
+    socket.on("typing", handleTyping);
     return () => socket.off("receive-message", handleReceiveMessage);
   }, [currentUserId]);
 
@@ -58,10 +65,18 @@ const Chat = () => {
       });
       setMessages((prev) => [
         ...prev,
-        { senderId: currentUserId, message: input },
+        {
+          senderId: currentUserId,
+          message: input,
+          timeStamp: new Date().toISOString(),
+        },
       ]);
       setInput("");
     }
+  };
+
+  const handleTyping = () => {
+    socket.emit("typing", { senderId: currentUserId, receiverId: otherUserId });
   };
 
   if (!currentUserId) return <p className="p-4">Loading chat...</p>;
@@ -150,10 +165,21 @@ const Chat = () => {
                   }`}
                 >
                   {msg.message}
+                  {msg.timeStamp && (
+                    <div className="text-xs text-white mt-1">
+                      {new Date(msg.timeStamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
+          {typingUserId === otherUserId && (
+            <div className="text-sm text-gray-500 italic">Typing...</div>
+          )}
         </div>
 
         {/* Input Box */}
@@ -161,13 +187,21 @@ const Chat = () => {
           <input
             type="text"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              handleTyping();
+            }}
             placeholder="Type a message..."
             className="flex-1 border border-gray-300 rounded-full px-4 py-2 outline-none"
           />
           <button
             onClick={handleMessage}
-            className="bg-black text-white p-2 rounded-full hover:bg-gray-800"
+            disabled={!input.trim()}
+            className={`p-2 rounded-full ${
+              input.trim()
+                ? "bg-black text-white hover:bg-gray-800"
+                : "bg-gray-300 text-white cursor-not-allowed"
+            }`}
           >
             <CiLocationArrow1 size={20} />
           </button>
