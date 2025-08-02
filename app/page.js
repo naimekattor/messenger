@@ -42,12 +42,19 @@ const Chat = () => {
     if (!currentUserId) return;
     socket.emit("register", currentUserId);
 
-    const handleReceiveMessage = ({ senderId, message }) => {
-      setMessages((prev) => [...prev, { senderId, message }]);
+    const handleReceiveMessage = ({ senderId, message, timeStamp }) => {
+      const serverTime = new Date().toISOString();
+      const finalTimeStamp = timeStamp || serverTime;
+      setMessages((prev) => [
+        ...prev,
+        { senderId, message, timeStamp: finalTimeStamp },
+      ]);
     };
 
     const handleTyping = ({ senderId }) => {
       setTypingUserId(senderId);
+      console.log(`User ${senderId} is typing...`);
+
       setTimeout(() => setTypingUserId(null), 2000);
     };
 
@@ -79,6 +86,8 @@ const Chat = () => {
     socket.emit("typing", { senderId: currentUserId, receiverId: otherUserId });
   };
 
+  console.log(messages);
+
   if (!currentUserId) return <p className="p-4">Loading chat...</p>;
 
   return (
@@ -105,7 +114,7 @@ const Chat = () => {
                 key={user._id}
                 onClick={() => {
                   setOtherUserId(user._id);
-                  setIsSidebarOpen(false); // mobile close
+                  setIsSidebarOpen(false);
                 }}
                 className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-200 ${
                   otherUserId === user._id ? "bg-gray-300" : ""
